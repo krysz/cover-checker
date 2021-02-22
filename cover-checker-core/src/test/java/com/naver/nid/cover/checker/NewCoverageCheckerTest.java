@@ -13,7 +13,9 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -45,19 +47,25 @@ class NewCoverageCheckerTest {
         fileCoverageReport.setLineCoverageReportList(Arrays.asList(lineCoverageReport, lineCoverageReport2));
         List<FileCoverageReport> coverage = Collections.singletonList(fileCoverageReport);
 
+        Map<Range, CoverageStatus> addedLine = new LinkedHashMap<>();
+        addedLine.put(new Range(1, 1), CoverageStatus.COVERED);
+        addedLine.put(new Range(2, 2), CoverageStatus.UNCOVERED);
+
         NewCoverageCheckReport newCoverageCheckReport = NewCoverageCheckReport.builder()
                 .threshold(60)
                 .totalNewLine(2)
                 .coveredNewLine(1)
                 .coveredFilesInfo(
                         Collections.singletonList(NewCoveredFile.builder()
-                                .name("test.java")
-                                .addedLine(2)
+                                .name("[test.java]")
+                                .url("test.java.html")
+                                .addedLine(addedLine)
+                                .addedLineCount(2)
                                 .addedCoverLine(1)
                                 .build()))
                 .build();
 
-        NewCoverageCheckReport check = checker.check(coverage, diffList, 60, 0);
+        NewCoverageCheckReport check = checker.check(coverage, diffList, 60, 0, "");
         assertEquals(newCoverageCheckReport, check);
 
     }
@@ -88,19 +96,25 @@ class NewCoverageCheckerTest {
         fileCoverageReport.setLineCoverageReportList(Arrays.asList(lineCoverageReport, lineCoverageReport2));
         List<FileCoverageReport> coverage = Collections.singletonList(fileCoverageReport);
 
+        Map<Range, CoverageStatus> addedLine = new LinkedHashMap<>();
+        addedLine.put(new Range(1, 1), CoverageStatus.COVERED);
+        addedLine.put(new Range(2, 2), CoverageStatus.UNCOVERED);
+
         NewCoverageCheckReport newCoverageCheckReport = NewCoverageCheckReport.builder()
                 .threshold(60)
                 .totalNewLine(2)
                 .coveredNewLine(1)
                 .coveredFilesInfo(
                         Collections.singletonList(NewCoveredFile.builder()
-                                .name("test.kt")
-                                .addedLine(2)
+                                .name("[test.kt]")
+                                .url("test.kt.html")
+                                .addedLine(addedLine)
+                                .addedLineCount(2)
                                 .addedCoverLine(1)
                                 .build()))
                 .build();
 
-        NewCoverageCheckReport check = checker.check(coverage, diffList, 60, 0);
+        NewCoverageCheckReport check = checker.check(coverage, diffList, 60, 0, "");
         assertEquals(newCoverageCheckReport, check);
     }
 
@@ -138,24 +152,32 @@ class NewCoverageCheckerTest {
 
         List<FileCoverageReport> coverage = Arrays.asList(fileCoverageReport, fileCoverageReport2);
 
+        Map<Range, CoverageStatus> addedLine = new LinkedHashMap<>();
+        addedLine.put(new Range(1, 1), CoverageStatus.COVERED);
+        addedLine.put(new Range(2, 2), CoverageStatus.UNCOVERED);
+
         NewCoverageCheckReport newCoverageCheckReport = NewCoverageCheckReport.builder()
                 .threshold(60)
                 .totalNewLine(4)
                 .coveredNewLine(2)
                 .coveredFilesInfo(
                         Arrays.asList(NewCoveredFile.builder()
-                                        .name("Module2/src/main/kotlin/test.kt")
-                                        .addedLine(2)
+                                        .name("[test.kt]")
+                                        .url("Module2.src.main.kotlin/test.kt.html")
+                                        .addedLine(addedLine)
                                         .addedCoverLine(1)
+                                        .addedLineCount(2)
                                         .build(),
                                 NewCoveredFile.builder()
-                                        .name("Module1/src/main/kotlin/test.kt")
-                                        .addedLine(2)
+                                        .name("[test.kt]")
+                                        .url("Module1.src.main.kotlin/test.kt.html")
+                                        .addedLine(addedLine)
                                         .addedCoverLine(1)
+                                        .addedLineCount(2)
                                         .build()))
                 .build();
 
-        NewCoverageCheckReport check = checker.check(coverage, diffList, 60, 0);
+        NewCoverageCheckReport check = checker.check(coverage, diffList, 60, 0, "");
         assertEquals(newCoverageCheckReport, check);
     }
 }

@@ -35,4 +35,7 @@ public class Parameter {
 	private String diffType;
 	private int prNumber;
 	private String coverageType;
+	private String buildId;
+	private String hostname;
+	private String buildTypeId;
 }

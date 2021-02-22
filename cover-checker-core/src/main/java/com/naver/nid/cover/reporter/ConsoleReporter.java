@@ -30,8 +30,8 @@ public class ConsoleReporter implements Reporter {
 			logger.info("{}/{} {}", result.getCoveredNewLine(), result.getTotalNewLine(), result.getCoverage());
 
 			result.getCoveredFilesInfo().stream()
-					.filter(f -> f.getAddedLine() > 0)
-					.forEach(f -> logger.info("{} {}/{} {}", f.getName(), f.getAddedCoverLine(), f.getAddedLine(), f.getCoverage()));
+					.filter(f -> f.getAddedLineCount() > 0)
+					.forEach(f -> logger.info("{} {}/{} {}", f.getName(), f.getAddedCoverLine(), f.getAddedLineCount(), f.getCoverage()));
 		} else {
 			logger.error("result error occurred", result.getError());
 		}

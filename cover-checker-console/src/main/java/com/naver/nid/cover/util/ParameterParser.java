@@ -59,6 +59,9 @@ public class ParameterParser {
 				.diffType(cmd.getOptionValue("diff-type"))
 				.prNumber(Integer.parseInt(getPrNumber(cmd)))
 				.coverageType(cmd.getOptionValue(COVERAGE_TYPE_OPTION))
+				.buildId(cmd.getOptionValue("bid"))
+				.hostname(cmd.getOptionValue("hostname"))
+				.buildTypeId(cmd.getOptionValue("bti"))
 				.build();
 
 		logger.debug("execute by {}", param);
@@ -124,7 +127,7 @@ public class ParameterParser {
 
 		commandOptions.addOption(Option.builder("c")
 				.longOpt(COVERAGE_PATH_OPTION)
-				.hasArg()
+				.hasArgs()
 				.required()
 				.desc("coverage report paths(absolute recommend), coverage report path can take multiple paths for multi-module project")
 				.build());
@@ -145,6 +148,24 @@ public class ParameterParser {
 				.longOpt("file-threshold")
 				.hasArg()
 				.desc("coverage report type (jacoco | cobertura) default is jacoco")
+				.build());
+
+		commandOptions.addOption(Option.builder("bid")
+				.longOpt("build-id")
+				.hasArg()
+				.desc("Build Id from Teamcity")
+				.build());
+
+		commandOptions.addOption(Option.builder("h")
+				.longOpt("hostname")
+				.hasArg()
+				.desc("Hostname of Teamcity")
+				.build());
+
+		commandOptions.addOption(Option.builder("bti")
+				.longOpt("build-type-id")
+				.hasArg()
+				.desc("Build Type Id from Teamcity")
 				.build());
 
 		return commandOptions;

@@ -49,7 +49,8 @@ public class NewCoverageChecker {
 	 * @param fileThreshold 파일별 커버리지 통과 조건
 	 * @return 전체 커버리지, 파일 별 커버리지
 	 */
-	public NewCoverageCheckReport check(List<FileCoverageReport> coverage, List<Diff> diff, int threshold, int fileThreshold) {
+	public NewCoverageCheckReport check(List<FileCoverageReport> coverage, List<Diff> diff, int threshold, int fileThreshold,
+			String baseUrl) {
 		Map<String, List<Line>> diffMap = diff.stream()
 				.filter(Objects::nonNull)
 				.peek(d -> logger.debug("diff file {}", d.getFileName()))
@@ -70,7 +71,7 @@ public class NewCoverageChecker {
 						, (u1, u2) -> Stream.concat(u1.stream(), u2.stream()).collect(Collectors.toList())));
 
 
-		NewCoverageCheckReport result = combine(coverageMap, diffMap);
+		NewCoverageCheckReport result = combine(coverageMap, diffMap, baseUrl);
 		result.setFileThreshold(fileThreshold);
 		result.setThreshold(threshold);
 		logger.debug("coverage {} threshold {}", result, threshold);
@@ -84,7 +85,8 @@ public class NewCoverageChecker {
 	 * @param newCodeLines   add line of code for each files
 	 * @return new line of code coverage result
 	 */
-	private NewCoverageCheckReport combine(Map<String, List<LineCoverageReport>> coverageReport, Map<String, List<Line>> newCodeLines) {
+	private NewCoverageCheckReport combine(Map<String, List<LineCoverageReport>> coverageReport, Map<String, List<Line>> newCodeLines,
+			String baseUrl) {
 		int totalAddLineCount = 0;
 		int coveredLineCount = 0;
 
@@ -109,6 +111,10 @@ public class NewCoverageChecker {
 			List<LineCoverageReport> lineCoverageReports = coverageReport.get(file);
 
 			logger.debug("check file {}", file);
+			String packageFileName = replaceLast(file, "/", "\\");
+			packageFileName = packageFileName.replace("/", ".").replace("\\", "/");
+
+			String url = baseUrl + packageFileName +".html";
 
 			Map<Integer, CoverageStatus> lineCoverStatus = lineCoverageReports.stream()
 					.collect(Collectors.toMap(LineCoverageReport::getLineNum, LineCoverageReport::getStatus
@@ -119,7 +125,7 @@ public class NewCoverageChecker {
 					.mapToInt(Line::getLineNumber)
 					.collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
 
-			long nonTestedList = addedLineNumber.stream()
+			long notTestableLines = addedLineNumber.stream()
 					.mapToInt(i -> i)
 					.filter(i -> lineCoverStatus.get(i) == CoverageStatus.NOTHING
 							|| lineCoverStatus.get(i) == null)
@@ -131,7 +137,7 @@ public class NewCoverageChecker {
 					.count();
 
 			// 전체 라인 중 실제 실행되는 코드가 아닌 경우 제외
-			long currTotalAddLineCount = addedLineNumber.size() - nonTestedList;
+			long currTotalAddLineCount = addedLineNumber.size() - notTestableLines;
 			// 테스트 된 라인 수
 			long currCoveredLineCount = addedLineNumber.stream().mapToInt(i -> i)
 					.filter(i -> lineCoverStatus.get(i) == CoverageStatus.COVERED
@@ -140,9 +146,22 @@ public class NewCoverageChecker {
 			if (currTotalAddLineCount == 0) { // 단순 필드 변경의 경우 결과 목록에 넣지 않는다.
 				continue;
 			}
+
+			Map<Integer, CoverageStatus> currTotalAddLines = addedLineNumber.stream().mapToInt(i -> i)
+					.filter(i -> lineCoverStatus.get(i) != CoverageStatus.NOTHING
+							&& lineCoverStatus.get(i) != null)
+					.boxed()
+					.collect(Collectors.toMap(i->i, lineCoverStatus::get));
+
+			currTotalAddLines = new TreeMap<>(currTotalAddLines);
+
+			Map<Range, CoverageStatus> orderedAddedRangeLines = fillRangeCoverageStatusMap(currTotalAddLines);
+
 			coveredFileList.add(NewCoveredFile.builder()
-					.name(file)
-					.addedLine((int) currTotalAddLineCount)
+					.name("["+file.substring(file.lastIndexOf("/")+1)+"]")
+					.url(url)
+					.addedLine(orderedAddedRangeLines)
+					.addedLineCount(currTotalAddLines.size())
 					.addedCoverLine((int) currCoveredLineCount).build());
 
 			totalAddLineCount += currTotalAddLineCount;
@@ -154,13 +173,71 @@ public class NewCoverageChecker {
 		}
 
 		// sort by file coverage
-		coveredFileList.sort(Comparator.comparingInt(f -> Math.floorDiv(100 * f.getAddedCoverLine(), f.getAddedLine())));
+		coveredFileList.sort(Comparator.comparingInt(f -> Math.floorDiv(100 * f.getAddedCoverLine(), f.getAddedLineCount())));
 
 		return NewCoverageCheckReport.builder()
 				.coveredNewLine(coveredLineCount)
 				.totalNewLine(totalAddLineCount)
 				.coveredFilesInfo(coveredFileList)
 				.build();
+	}
+
+	private Map<Range, CoverageStatus> fillRangeCoverageStatusMap(Map<Integer, CoverageStatus> currTotalAddLines) {
+		Map<Range, CoverageStatus> orderedAddedRangeLines = new LinkedHashMap<>();
+
+		Iterator<Map.Entry<Integer, CoverageStatus>> it = currTotalAddLines.entrySet().iterator();
+		boolean firstRun = true;
+
+		Map.Entry<Integer, CoverageStatus> prevEntry = null;
+		int startRange = 0, endRange = 0;
+
+		while (it.hasNext()) {
+			if (firstRun) {
+				prevEntry = it.next();
+				startRange = prevEntry.getKey();
+				endRange = startRange;
+				firstRun = false;
+			}
+
+			do {
+				if (it.hasNext()) {
+					Map.Entry<Integer, CoverageStatus> entry = it.next();
+
+					if (entry.getValue() == prevEntry.getValue()) {
+						endRange = entry.getKey();
+
+						if (!it.hasNext()) {
+							orderedAddedRangeLines.put(new Range(startRange, endRange), prevEntry.getValue());
+						}
+					} else {
+						orderedAddedRangeLines.put(new Range(startRange, endRange), prevEntry.getValue());
+						prevEntry = entry;
+						startRange = prevEntry.getKey();
+						endRange = startRange;
+
+						if (!it.hasNext()) {
+							orderedAddedRangeLines.put(new Range(startRange, endRange), prevEntry.getValue());
+						}
+						break;
+					}
+				} else {
+					orderedAddedRangeLines.put(new Range(startRange, endRange), prevEntry.getValue());
+				}
+
+			} while (it.hasNext());
+		}
+		return orderedAddedRangeLines;
+	}
+
+	private String replaceLast(String string, String toReplace, String replacement) {
+		int pos = string.lastIndexOf(toReplace);
+		if (pos > -1) {
+			return string.substring(0, pos)
+					+ replacement
+					+ string.substring(pos + toReplace.length());
+		} else {
+			return string;
+		}
 	}
 
 }

@@ -64,7 +64,9 @@ public final class CoverChecker {
 					.get()
 					.thenApplyAsync(s -> s.collect(Collectors.toList()));
 
-			NewCoverageCheckReport check = checker.check(coverage.join(), diff.join(), param.getThreshold(), param.getFileThreshold());
+			String baseUrl = "http://" + param.getHostname() + "/repository/download/" + param.getBuildTypeId()
+					+ "/" + param.getBuildId() + ":id/.teamcity/coverage_jacoco/coverage.zip!/";
+			NewCoverageCheckReport check = checker.check(coverage.join(), diff.join(), param.getThreshold(), param.getFileThreshold(), baseUrl);
 
 			reporter.report(check);
 			log.info("check result {}", check.result());

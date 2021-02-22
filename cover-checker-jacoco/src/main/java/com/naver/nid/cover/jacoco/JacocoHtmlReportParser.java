@@ -33,6 +33,9 @@ import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import net.lingala.zip4j.exception.ZipException;
+import net.lingala.zip4j.core.ZipFile;
+
 /**
  * jacoco html report를 파싱
  */
@@ -49,6 +52,23 @@ public class JacocoHtmlReportParser implements CoverageReportParser {
 	public List<FileCoverageReport> parse(File reportFile) {
 		logger.debug("parse {}", reportFile.getAbsolutePath());
 		if (reportFile.isFile()) {
+			if (reportFile.getName().endsWith("zip")) {
+				try {
+					File f = new File("./unzipTemp");
+					if(f.exists()) {
+						deleteDir(f);
+				  }
+					ZipFile zipFile = new ZipFile(reportFile.getAbsolutePath());
+					zipFile.extractAll("./unzipTemp");
+				} catch (ZipException e) {
+					throw new ParseException(String.format("Bad zip file: %s", reportFile.getName()), e);
+				}
+				reportFile = new File( "./unzipTemp/");
+				List<FileCoverageReport> result = parseDirectory(reportFile);
+				deleteDir(reportFile);
+				return result;
+			}
+
 			if (reportFileChecker.test(reportFile)) {
 				return Collections.singletonList(parseFile(reportFile));
 			} else {
@@ -57,6 +77,18 @@ public class JacocoHtmlReportParser implements CoverageReportParser {
 		} else {
 			return parseDirectory(reportFile);
 		}
+	}
+
+	private void deleteDir(File file) {
+			File[] contents = file.listFiles();
+			if (contents != null) {
+				for (File f : contents) {
+					if (! Files.isSymbolicLink(f.toPath())) {
+						deleteDir(f);
+					}
+				}
+			}
+			file.delete();
 	}
 
 	private List<FileCoverageReport> parseDirectory(File reportDirectory) {
@@ -89,7 +121,12 @@ public class JacocoHtmlReportParser implements CoverageReportParser {
 
 			String filePath = file.getCanonicalPath();
 			logger.debug("parse {}", filePath);
-			String[] split = filePath.split("/");
+			String[] split;
+			if (filePath.contains("/")) {
+				split = filePath.split("/");
+			} else {
+				split = filePath.split("\\\\");
+			}
 			String sourcePath = split[split.length - 2].replace(".", "/") + "/" + split[split.length - 1].replace(".html", "");
 			fileReport.setFileName(sourcePath);
 			fileReport.setType(file.getName().split("\\.")[1]);

@@ -15,6 +15,11 @@
  */
 package com.naver.nid.cover.checker.model;
 
+import java.util.Map;
+
+import com.naver.nid.cover.checker.Range;
+import com.naver.nid.cover.parser.coverage.model.CoverageStatus;
+
 import lombok.Builder;
 import lombok.Data;
 
@@ -26,13 +31,15 @@ import static com.naver.nid.cover.checker.model.ResultIcon.CHECK_FILE_PASS;
 public class NewCoveredFile {
 
 	private String name;
-	private int addedLine;
+	private String url;
+	private Map<Range, CoverageStatus> addedLine;
+	private int addedLineCount;
 	private int addedCoverLine;
 	private int threshold;
 
 	public int getCoverage() {
-		if(addedLine == 0) return 0;
-		return Math.floorDiv(100 * addedCoverLine, addedLine);
+		if(addedLineCount == 0) return 0;
+		return Math.floorDiv(100 * addedCoverLine, addedLineCount);
 	}
 
 	public boolean isPass() {

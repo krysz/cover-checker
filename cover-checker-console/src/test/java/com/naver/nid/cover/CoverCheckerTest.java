@@ -1,6 +1,7 @@
 package com.naver.nid.cover;
 
 import com.naver.nid.cover.checker.NewCoverageChecker;
+import com.naver.nid.cover.checker.Range;
 import com.naver.nid.cover.checker.model.NewCoverageCheckReport;
 import com.naver.nid.cover.checker.model.NewCoveredFile;
 import com.naver.nid.cover.github.manager.GithubPullRequestManager;
@@ -24,11 +25,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -81,7 +86,9 @@ class CoverCheckerTest {
 		fileCoverageReport.setLineCoverageReportList(Arrays.asList(lineCoverageReport, lineCoverageReport2));
 		List<FileCoverageReport> coverageModule1 = Collections.singletonList(fileCoverageReport);
 		List<FileCoverageReport> coverageModule2 = Collections.singletonList(fileCoverageReport2);
-
+		Map<Range, CoverageStatus> addedLine = new LinkedHashMap<>();
+		addedLine.put(new Range(1, 1), CoverageStatus.COVERED);
+		addedLine.put(new Range(2, 2), CoverageStatus.UNCOVERED);
 		NewCoverageCheckReport newCoverageCheckReport = NewCoverageCheckReport.builder()
 				.threshold(50)
 				.totalNewLine(2)
@@ -89,7 +96,7 @@ class CoverCheckerTest {
 				.coveredFilesInfo(
 						Collections.singletonList(NewCoveredFile.builder()
 								.name("test.java")
-								.addedLine(2)
+								.addedLine(addedLine)
 								.addedCoverLine(1)
 								.build()))
 				.build();
@@ -100,7 +107,8 @@ class CoverCheckerTest {
 		doReturn(diffList.stream()).when(diffParser).parse();
 		doReturn(coverageModule1).when(coverageReportParser).parse("test-module1");
 		doReturn(coverageModule2).when(coverageReportParser).parse("test-module2");
-		doReturn(newCoverageCheckReport).when(checker).check(coverageList, diffList, 50, 30);
+		doReturn(newCoverageCheckReport).when(checker).check(coverageList, diffList, 50, 30,
+				"http://null/repository/download/null/null:id/.teamcity/coverage_jacoco/coverage.zip!/");
 
 		Parameter param = Parameter.builder()
 				.coveragePath(null)
@@ -121,6 +129,6 @@ class CoverCheckerTest {
 		verify(diffParser).parse();
 		verify(coverageReportParser).parse("test-module1");
 		verify(coverageReportParser).parse("test-module2");
-		verify(checker).check(coverageList, diffList, 50, 30);
+		verify(checker).check(coverageList, diffList, 50, 30, "http://null/repository/download/null/null:id/.teamcity/coverage_jacoco/coverage.zip!/");
 	}
 }

@@ -22,6 +22,7 @@ public class LineCoverageReport {
 	private int lineNum;
 	private String lineContent;
 	private CoverageStatus status;
+	private String filePath;
 
 	@Override
 	public String toString() {
